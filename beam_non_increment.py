@@ -194,4 +194,4 @@ if __name__ == '__main__':
     # train('wsj_train.f1k.conll06', 'test.model',10, 3)
     # cProfile.run("test('wsj_dev.conll06', 'test.model', 10)")
     # linearize('wsj_dev.conll06', 'test.model', 10, 1)
-    cProfile.run("train('wsj_train.f1k.conll06', 'test.model',10, 3)")
+    cProfile.run("train('wsj_train.f1k.conll06', 'test.model',5 , 3)")

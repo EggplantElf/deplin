@@ -89,10 +89,10 @@ class Sequence(tuple):
 
     def get_feats(self, model):
         self.feats = []
-        for i in self:
-            self.add_feat(model, 'LB:%s' % i.label)
-            self.add_feat(model, 'LM:%s' % i.lemma)
-            self.add_feat(model, 'P:%s' % i.pos)
+        # for i in self:
+        #     self.add_feat(model, 'LB:%s' % i.label)
+        #     self.add_feat(model, 'LM:%s' % i.lemma)
+        #     self.add_feat(model, 'P:%s' % i.pos)
         for (i, j) in izip(self, self[1:]):
             self.add_feat(model, 'LB1_LB2:%s_%s' % (i.label, j.label))
             self.add_feat(model, 'LM1_LM2:%s_%s' % (i.lemma, j.lemma))
@@ -124,9 +124,9 @@ class Sequence(tuple):
         inc_feats = []
         func = lambda x: inc_feats.append(model.map_feat(x))
 
-        func('LB:%s' % tk.label)
-        func('LM:%s' % tk.lemma)
-        func('P:%s' % tk.pos)
+        # func('LB:%s' % tk.label)
+        # func('LM:%s' % tk.lemma)
+        # func('P:%s' % tk.pos)
 
         if len(self) >= 1:
             func('LB1_LB2:%s_%s' % (self[-1].label, tk.label))

@@ -68,5 +68,11 @@ class Model:
             self.weights[i] -= t
 
     def remove_zeros(self):
-        pass
+        new_feat_map = {}
+        new_feat_rec = {}
+        
+
+
+
+
 

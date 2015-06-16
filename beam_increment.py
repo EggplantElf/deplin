@@ -6,7 +6,6 @@ import cProfile
 
 # TODO
 # implement the evaluate metrics, BLEU, NIST, Edit, Exact
-# try the incremental training
 
 #################################
 # training
@@ -118,32 +117,6 @@ def test(filename, model_file, domain_size):
     print 'accuracy: %d / %d = %.4f' % (correct, total, correct / total)
     for l in sorted(stats):
         print 'length = %d, accuracy: %d / %d = %.4f' % (l, stats[l][0], stats[l][1], stats[l][0] / stats[l][1])
-
-
-
-#################################
-# linearization
-
-def linearize(filename, model_file, domain_size, sent_size):
-    model = Model(model_file)
-    oracle_score = 0
-    correct = 0
-    total = 0
-    for sent in read_sentence(filename):
-        candis = {}
-        for hd in sent: 
-            candis[hd] = domain_search(model, hd.domain, domain_size)
-        sq = sent_search(model, sent, candis, sent_size)
-        score = sq.get_oracle_score()
-        oracle_score += score
-        if score == 0:
-            correct += 1
-        total += 1
-
-    print 'oracle score:', oracle_score
-    print 'accuracy: %d / %d = %.4f' % (correct, total, correct / total)
-
-
 
 
 #################################
