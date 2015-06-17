@@ -4,22 +4,25 @@ import cPickle
 import gzip
 
 
+
 class Model:
     def __init__(self, modelfile = None):
         if modelfile:
             self.load(modelfile)
             self.frozen = True
+            self.get_feat = self.map_feat
         else:
             self.feat_map = {'#': 0}
-            self.feat_rev = {0: '#'}
+            # self.feat_rev = {0: '#'}
             self.weights = [0]
             self.frozen = False
+            self.get_feat = self.register_feat
 
     def save(self, modelfile):
         stream = gzip.open(modelfile,'wb')
         cPickle.dump(self.weights,stream,-1)
         cPickle.dump(self.feat_map, stream, -1)
-        cPickle.dump(self.feat_rev, stream, -1)
+        # cPickle.dump(self.feat_rev, stream, -1)
         stream.close()
 
     def load(self, modelfile):
@@ -27,19 +30,22 @@ class Model:
         stream = gzip.open(modelfile,'rb')
         self.weights = cPickle.load(stream)
         self.feat_map = cPickle.load(stream)
-        self.feat_rev = cPickle.load(stream)
+        # self.feat_rev = cPickle.load(stream)
         stream.close()
 
 
     def map_feat(self, feat):
-        if self.frozen:
-            return self.feat_map.get(feat, None)
+        return self.feat_map.get(feat, None)
+
+    def register_feat(self, feat):
+        if feat not in self.feat_map:
+            l = len(self.feat_map)
+            self.feat_map[feat] = l
+            # self.feat_rev[l] = feat
+            return l
         else:
-            if feat not in self.feat_map:
-                l = len(self.feat_map)
-                self.feat_map[feat] = l
-                self.feat_rev[l] = feat
             return self.feat_map[feat]
+
 
     def rev_feat(self, i):
         return self.feat_map.get(feat, None)
@@ -57,20 +63,20 @@ class Model:
             d = max(feats) - len(self.weights) + 1
             if d > 0:
                 self.grow_weights(d)
-        return sum(self.weights[i] for i in feats)
+        return sum(self.weights[i] for i in feats if i)
 
     def update(self, gold, pred):
         # t = min((pred.score - gold.score + 1) / (2 * min(len(pred.feats), len(gold.feats))), 0.1)
         t = 1
-        for i in gold.feats:
+        for i in gold.get_full_feats():
             self.weights[i] += t
-        for i in pred.feats:
+        for i in pred.get_full_feats():
             self.weights[i] -= t
 
     def remove_zeros(self):
         new_feat_map = {}
         new_feat_rec = {}
-        
+
 
 
 

@@ -20,50 +20,52 @@ def train(train_file, model_file, domain_size, sent_size):
             if i % 100 == 0:
                 print i
             for hd in sent:
-                pred = domain_search(model, hd.domain, domain_size)[0]
-                oracle_score += pred.get_oracle_score()
+                # pred = domain_search(model, hd.domain, domain_size)[0]
+                # oracle_score += pred.get_oracle_score()
                 # training the domain linearizer
                 train_domain(model, hd.domain, domain_size)
         print 'oracle score:', oracle_score
         print '# of features:', len(model.feat_map)
         print '# of non-zero features:', len(filter(lambda x: x != 0, model.weights))
     print 'sequences:', Sequence.count
-    print '# of mapping:', Sequence.mapped
-    print '# of scoring:', Sequence.scored
 
-    model.save(model_file)
+    # model.save(model_file)
 
 def train_domain(model, domain, size):
     gold = domain.gold_sequence()
-    # gold_sub, pred_sub = find_early_violation(model, domain, gold, size)
-    gold_sub, pred_sub = find_max_violation(model, domain, gold, size)
+    gold_sub, pred_sub = find_early_violation(model, domain, gold, size)
+    # gold_sub, pred_sub = find_max_violation(model, domain, gold, size)
     if gold_sub != pred_sub:
         model.update(gold_sub, pred_sub)
 
 
 def find_early_violation(model, domain, gold, size):
-    gold_sub = Sequence().calc(model)
+    gold_sub = Sequence()
     agenda = [gold_sub]
     for i in range(len(domain)):
         beam = []
         for sq in agenda:
             for tk in domain:
                 if tk not in sq:
+                # if not contains(sq, tk):
                     nsq = sq.append(model, tk)
                     beam.append(nsq)
         beam.sort(key = lambda x: x.score, reverse = True)
         agenda = beam[:size]
         gold_sub = gold_sub.append(model, gold[i])
+        # if not contains(agenda, gold_sub):
         if gold_sub not in agenda:
             return gold_sub, agenda[0]
-    return gold.calc(model), agenda[0]
+    return gold_sub, agenda[0]
 
 
+def contains(sq, tk):
+    return tk in sq.set
 
 
 def find_max_violation(model, domain, gold, size):
     violations = []
-    gold_sub = Sequence().calc(model)
+    gold_sub = Sequence()
     agenda = [gold_sub]
     for i in range(len(domain)):
         beam = []
@@ -81,7 +83,7 @@ def find_max_violation(model, domain, gold, size):
     if violations:
         return max(violations, key = lambda (g, p): p.score - g.score)
     else:
-        return gold.calc(model), agenda[0]
+        return gold_sub, agenda[0]
 
 
 
@@ -123,7 +125,7 @@ def test(filename, model_file, domain_size):
 # domain search
 
 def domain_search(model, domain, size):
-    agenda = [Sequence().calc(model)]
+    agenda = [Sequence()]
     for i in range(len(domain)):
         beam = []
         for sq in agenda:
@@ -141,7 +143,7 @@ def domain_search(model, domain, size):
 # sent search
 
 def sent_search(model, sent, candis, size):
-    beam = [Sequence().calc(model)]
+    beam = [Sequence()]
     for hd in traverse(sent[0]):
         beam = [replace(model, hsq, dsq) for dsq in candis[hd] for hsq in beam]
         beam.sort(key = lambda x: x.score, reverse = True)

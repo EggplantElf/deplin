@@ -43,10 +43,7 @@ class Domain(list):
         self.head = head
 
     def gold_sequence(self):
-        return Sequence(sorted(self, key = lambda x: x.tid))
-
-    # def __repr__(self):
-    #     return 'd(%s)' % self.head
+        return sorted(self, key = lambda x: x.tid)
 
 class Sentence(list):
     def __init__(self):
@@ -65,52 +62,47 @@ class Sentence(list):
 
     def randomize(self):
         for d in self:
-            shuffle(d.domain)
-            # d.domain.reverse()
-            shuffle(d.deps)
+            # shuffle(d.domain)
+            d.domain.reverse()
+            # shuffle(d.deps)
+            d.deps.reverse()
 
 
 class Sequence(tuple):
     count = 0
-    mapped = 0
-    scored = 0
-    appended = 0
 
     def __init__(self, *args):
         super(Sequence, self).__init__(self, *args)
+        self.prev = None
+        self.score = 0
+        self.feats = []
         Sequence.count += 1
+        # experiment
+        # self.set = set(self)
+
     def __repr__(self):
         return '(%s): %d' % (', '.join(str(i) for i in self), self.score)
 
-    def calc(self, model):
-        self.get_feats(model)
-        self.get_score(model)
-        return self
-
     def get_feats(self, model):
-        self.feats = []
-        # for i in self:
-        #     self.add_feat(model, 'LB:%s' % i.label)
-        #     self.add_feat(model, 'LM:%s' % i.lemma)
-        #     self.add_feat(model, 'P:%s' % i.pos)
-        for (i, j) in izip(self, self[1:]):
-            self.add_feat(model, 'LB1_LB2:%s_%s' % (i.label, j.label))
-            self.add_feat(model, 'LM1_LM2:%s_%s' % (i.lemma, j.lemma))
-            self.add_feat(model, 'LB1_LM2:%s_%s' % (i.label, j.lemma))
-            self.add_feat(model, 'P1_P2:%s_%s' % (i.pos, j.pos))
-        for (i, j, k) in izip(self, self[1:], self[2:]):
-            self.add_feat(model, 'LM1_LM2_LM3:%s_%s_%s' % (i.lemma, j.lemma, k.lemma))
-            self.add_feat(model, 'P1_P2_P3:%s_%s_%s' % (i.pos, j.pos, k.pos))
-        Sequence.mapped += 1
+        l = len(self)
+        if l >= 2:
+            self.feats.append(model.get_feat('LB1_LB2:%s_%s' % (self[-2].label, self[-1].label)))
+            self.feats.append(model.get_feat('LM1_LM2:%s_%s' % (self[-2].lemma, self[-1].lemma)))
+            self.feats.append(model.get_feat('LB1_LM2:%s_%s' % (self[-2].label, self[-1].lemma)))
+            self.feats.append(model.get_feat('P1_P2:%s_%s' % (self[-2].pos, self[-1].pos)))
+        if l >= 3:
+            self.feats.append(model.get_feat('LM1_LM2_LM3:%s_%s_%s' % (self[-3].lemma, self[-2].lemma, self[-1].lemma)))
+            self.feats.append(model.get_feat('P1_P2_P3:%s_%s_%s' % (self[-3].pos, self[-2].pos, self[-1].pos)))
 
-    def add_feat(self, model, feat_str):
-        feat = model.map_feat(feat_str)
-        if feat != None:
-            self.feats.append(feat)
+    def get_full_feats(self):
+        if self.prev:
+            return self.prev.get_full_feats() + self.feats
+        else:
+            return []
 
     def get_score(self, model):
-        self.score = model.get_score(self.feats)
-        Sequence.scored += 1
+        self.score = self.prev.score + model.get_score(self.feats)
+
 
     def get_oracle_score(self):
         score = 0
@@ -121,28 +113,10 @@ class Sequence(tuple):
 
     def append(self, model, tk):
         sq = Sequence(self + (tk,))
-        inc_feats = []
-        func = lambda x: inc_feats.append(model.map_feat(x))
-
-        # func('LB:%s' % tk.label)
-        # func('LM:%s' % tk.lemma)
-        # func('P:%s' % tk.pos)
-
-        if len(self) >= 1:
-            func('LB1_LB2:%s_%s' % (self[-1].label, tk.label))
-            func('LM1_LM2:%s_%s' % (self[-1].lemma, tk.lemma))
-            func('LB1_LM2:%s_%s' % (self[-1].label, tk.lemma))
-            func('P1_P2:%s_%s' % (self[-1].pos, tk.pos))
-        if len(self) >= 2:
-            func('LM1_LM2_LM3:%s_%s_%s' % (self[-2].lemma, self[-1].lemma, tk.lemma))
-            func('P1_P2_P3:%s_%s_%s' % (self[-2].pos, self[-1].pos, tk.pos))
-        inc_feats = filter(lambda x: x, inc_feats)
-        inc_score = model.get_score(inc_feats)
-        sq.feats = self.feats + inc_feats
-        sq.score = self.score + inc_score
-        Sequence.appended += 1
+        sq.prev = self
+        sq.get_feats(model)
+        sq.get_score(model)
         return sq
-
 
 
 def read_sentence(filename):
@@ -159,6 +133,4 @@ def read_sentence(filename):
             sentence = Sentence()
 
 
-def not_none(x):
-    return x != None
 
