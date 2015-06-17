@@ -37,9 +37,9 @@ class Root(Token):
         self.domain = Domain(self)
         self.deps = []
 
-class Domain(list):
+class Domain(set):
     def __init__(self, head):
-        self.append(head)
+        self.add(head)
         self.head = head
 
     def gold_sequence(self):
@@ -57,13 +57,13 @@ class Sentence(list):
     def get_domains(self):
         for d in self[1:]:
             h = self[d.hid]
-            h.domain.append(d)
+            h.domain.add(d)
             h.deps.append(d)
 
     def randomize(self):
         for d in self:
             # shuffle(d.domain)
-            d.domain.reverse()
+            # d.domain.reverse()
             # shuffle(d.deps)
             d.deps.reverse()
 

@@ -17,7 +17,7 @@ def train(train_file, model_file, domain_size, sent_size):
     model = Model()
     sents = [sent for sent in read_sentence(train_file)]
     print '# of sentences', len(sents)
-    for it in range(10):
+    for it in xrange(10):
         oracle_score = 0
         for (i, sent) in enumerate(sents):
             if i % 100 == 0:
@@ -42,35 +42,28 @@ def train_domain(model, domain, size):
         model.update(gold_sub, pred_sub)
 
 
-def find_early_violation(model, domain, gold, size):
+def find_early_violation(model, domain, gold, size): # 80 sec
     gold_sub = Sequence()
     agenda = [gold_sub]
-    for i in range(len(domain)):
+    for i in xrange(len(domain)):
         beam = []
         for sq in agenda:
-            for tk in domain:
-                # if tk not in sq:
-                if not contains(sq, tk):
-                    nsq = sq.append(model, tk)
-                    beam.append(nsq)
+            for tk in domain - set(sq):
+                nsq = sq.append(model, tk) # 44 sec
+                beam.append(nsq)
         beam.sort(key = lambda x: x.score, reverse = True)
         agenda = beam[:size]
         gold_sub = gold_sub.append(model, gold[i])
-        # if not contains(agenda, gold_sub):
         if gold_sub not in agenda:
             return gold_sub, agenda[0]
     return gold_sub, agenda[0]
-
-
-def contains(sq, tk):
-    return tk in sq
 
 
 def find_max_violation(model, domain, gold, size):
     violations = []
     gold_sub = Sequence()
     agenda = [gold_sub]
-    for i in range(len(domain)):
+    for i in xrange(len(domain)):
         beam = []
         for sq in agenda:
             for tk in domain:

@@ -12,6 +12,7 @@ class Model:
             self.load(modelfile)
         else:
             self.feat_map = defaultdict(int)
+            # self.feat_map = {}
 
     def save(self, modelfile):
         stream = gzip.open(modelfile,'wb')
@@ -24,13 +25,15 @@ class Model:
         self.feat_map = cPickle.load(stream)
         stream.close()
 
+    # defaultdict is better than get, weird
     def get_score(self, feats):
-        try:
-            return self.feat_map[feats]
-        except:
-            return 0
-
-
+        return self.feat_map.get(feats, 0)
+        # if :
+        #     return self.feat_map[feats]
+        # except:
+        #     return 0
+        # return self.feat_map[feats]
+        
 
     def update(self, gold, pred):
         for i in gold.get_full_feats():
