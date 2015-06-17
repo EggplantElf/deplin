@@ -1,11 +1,14 @@
 from __future__ import division
 from sentence import *
-from model import *
+from new_model import *
 import cProfile
 
 
 # TODO
+# even multi-thread/processing
 # implement the evaluate metrics, BLEU, NIST, Edit, Exact
+# improve speed for tk in sq
+
 
 #################################
 # training
@@ -26,7 +29,7 @@ def train(train_file, model_file, domain_size, sent_size):
                 train_domain(model, hd.domain, domain_size)
         print 'oracle score:', oracle_score
         print '# of features:', len(model.feat_map)
-        print '# of non-zero features:', len(filter(lambda x: x != 0, model.weights))
+        print '# of non-zero features:', len(filter(lambda x: x != 0, model.feat_map.values()))
     print 'sequences:', Sequence.count
 
     # model.save(model_file)
@@ -46,8 +49,8 @@ def find_early_violation(model, domain, gold, size):
         beam = []
         for sq in agenda:
             for tk in domain:
-                if tk not in sq:
-                # if not contains(sq, tk):
+                # if tk not in sq:
+                if not contains(sq, tk):
                     nsq = sq.append(model, tk)
                     beam.append(nsq)
         beam.sort(key = lambda x: x.score, reverse = True)
@@ -60,7 +63,7 @@ def find_early_violation(model, domain, gold, size):
 
 
 def contains(sq, tk):
-    return tk in sq.set
+    return tk in sq
 
 
 def find_max_violation(model, domain, gold, size):

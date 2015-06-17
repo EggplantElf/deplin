@@ -75,34 +75,47 @@ class Sequence(tuple):
         super(Sequence, self).__init__(self, *args)
         self.prev = None
         self.score = 0
-        self.feats = []
         Sequence.count += 1
-        # experiment
-        # self.set = set(self)
 
     def __repr__(self):
         return '(%s): %d' % (', '.join(str(i) for i in self), self.score)
 
-    def get_feats(self, model):
+    def get_local_feats(self):
         l = len(self)
+        feats = []
         if l >= 2:
-            self.feats.append(model.get_feat('LB1_LB2:%s_%s' % (self[-2].label, self[-1].label)))
-            self.feats.append(model.get_feat('LM1_LM2:%s_%s' % (self[-2].lemma, self[-1].lemma)))
-            self.feats.append(model.get_feat('LB1_LM2:%s_%s' % (self[-2].label, self[-1].lemma)))
-            self.feats.append(model.get_feat('P1_P2:%s_%s' % (self[-2].pos, self[-1].pos)))
-        if l >= 3:
-            self.feats.append(model.get_feat('LM1_LM2_LM3:%s_%s_%s' % (self[-3].lemma, self[-2].lemma, self[-1].lemma)))
-            self.feats.append(model.get_feat('P1_P2_P3:%s_%s_%s' % (self[-3].pos, self[-2].pos, self[-1].pos)))
+            feats.append('LB1_LB2:%s_%s' % (self[-2].label, self[-1].label))
+            feats.append('LM1_LM2:%s_%s' % (self[-2].lemma, self[-1].lemma))
+            feats.append('LB1_LM2:%s_%s' % (self[-2].label, self[-1].lemma))
+            feats.append('P1_P2:%s_%s' % (self[-2].pos, self[-1].pos))
+            if l >= 3:
+                feats.append('LM1_LM2_LM3:%s_%s_%s' % (self[-3].lemma, self[-2].lemma, self[-1].lemma))
+                feats.append('P1_P2_P3:%s_%s_%s' % (self[-3].pos, self[-2].pos, self[-1].pos))
+        return feats
 
+    # maybe even not list, but direct update here, try later
+    # doesn't matter much, too few updates anyway
     def get_full_feats(self):
         if self.prev:
-            return self.prev.get_full_feats() + self.feats
+            return self.prev.get_full_feats() + self.get_local_feats()
         else:
             return []
 
-    def get_score(self, model):
-        self.score = self.prev.score + model.get_score(self.feats)
+    def get_local_score(self, model):
+        l = len(self)
+        s = 0
+        if l >= 2:
+            s += model.get_score('LB1_LB2:%s_%s' % (self[-2].label, self[-1].label))
+            s += model.get_score('LM1_LM2:%s_%s' % (self[-2].lemma, self[-1].lemma))
+            s += model.get_score('LB1_LM2:%s_%s' % (self[-2].label, self[-1].lemma))
+            s += model.get_score('P1_P2:%s_%s' % (self[-2].pos, self[-1].pos))
+            if l >= 3:
+                s += model.get_score('LM1_LM2_LM3:%s_%s_%s' % (self[-3].lemma, self[-2].lemma, self[-1].lemma))
+                s += model.get_score('P1_P2_P3:%s_%s_%s' % (self[-3].pos, self[-2].pos, self[-1].pos))
+        return s
 
+    def get_full_score(self, model):
+        self.score = self.prev.score + self.get_local_score(model)
 
     def get_oracle_score(self):
         score = 0
@@ -114,8 +127,7 @@ class Sequence(tuple):
     def append(self, model, tk):
         sq = Sequence(self + (tk,))
         sq.prev = self
-        sq.get_feats(model)
-        sq.get_score(model)
+        sq.get_full_score(model)
         return sq
 
 
