@@ -145,4 +145,3 @@ def read_sentence(filename):
             sentence = Sentence()
 
 
-

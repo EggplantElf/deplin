@@ -1,49 +1,68 @@
 from __future__ import division
 from sentence import *
-from new_model import *
 import cProfile
 from multiprocessing import Process, Manager, Pool
+from itertools import izip, repeat
 
 # TODO
 # even multi-thread/processing
 # implement the evaluate metrics, BLEU, NIST, Edit, Exact
-
+# improve speed for tk in sq
 
 #################################
-# training
+# parallel batch learning
 
-def train(train_file, model_file, domain_size, sent_size):
-    model = Model()
-    sents = [sent for sent in read_sentence(train_file)]
-    # sents = list(read_sentence(train_file))
+def grouper(iterable, n):
+    "Collect data into fixed-length chunks or blocks"
+    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx
+    args = [iter(iterable)] * n
+    return izip(*args)
 
-    print '# of sentences', len(sents)
+def update(model, gold, pred):
+    for i in gold.get_full_feats():
+        try:
+            model[i] += 1
+        except:
+            model[i] = 1
+    for i in pred.get_full_feats():
+        try:
+            model.feat_map[i] -= 1
+        except:
+            model[i] = -1
+
+def train_parallel(train_file, model_file, batch_size, domain_size):
+    model = Manager().dict()
+    sents = list(read_sentence(train_file))
+    batches = grouper(sents, batch_size)
+    jobs = []
     for it in xrange(10):
-        oracle_score = 0
-        for (i, sent) in enumerate(sents):
-            if i % 100 == 0:
-                print i
-            for hd in sent:
-                # pred = domain_search(model, hd.domain, domain_size)[0]
-                # oracle_score += pred.get_oracle_score()
-                # training the domain linearizer
-                train_domain(model, hd.domain, domain_size)
-        print 'oracle score:', oracle_score
-        print '# of features:', len(model.feat_map)
-        print '# of non-zero features:', len(filter(lambda x: x != 0, model.feat_map.values()))
-    print 'sequences:', Sequence.count
+        for batch in batches:
+            p = Process(target=train_batch ,args=(model, batch, domain_size))
+            jobs.append(p)
+            p.start()
+        for p in jobs:
+            p.join()
+        print '# of features:', len(model)
+        print '# of non-zero features:', len(filter(lambda x: x != 0, model.values()))
 
-    # model.save(model_file)
+
+def train_batch(model, batch, domain_size):
+    print 10
+    for sent in batch:
+        for hd in sent:
+            train_domain(model, hd.domain, domain_size)
+    
+
 
 def train_domain(model, domain, size):
     gold = domain.gold_sequence()
     gold_sub, pred_sub = find_early_violation(model, domain, gold, size)
     # gold_sub, pred_sub = find_max_violation(model, domain, gold, size)
     if gold_sub != pred_sub:
-        model.update(gold_sub, pred_sub)
+        update(model, gold_sub, pred_sub)
 
 
-def find_early_violation(model, domain, gold, size): # 80 sec
+def find_early_violation(model, domain, gold, size):
     gold_sub = Sequence()
     agenda = [gold_sub]
     for i in xrange(len(domain)):
@@ -166,4 +185,5 @@ if __name__ == '__main__':
     # train('wsj_train.f1k.conll06', 'test.model',10, 3)
     # cProfile.run("test('wsj_dev.conll06', 'test.model', 10)")
     # linearize('wsj_dev.conll06', 'test.model', 10, 1)
-    cProfile.run("train('wsj_train.f1k.conll06', 'test.model',10, 3)")
+    # cProfile.run("train_parallel('wsj_train.f1k.conll06', 'test.model', 10, 10)")
+    train_parallel('wsj_train.f1k.conll06', 'test.model', 10, 10)

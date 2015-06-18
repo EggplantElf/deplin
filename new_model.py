@@ -28,10 +28,6 @@ class Model:
     # defaultdict is better than get, weird
     def get_score(self, feats):
         return self.feat_map.get(feats, 0)
-        # if :
-        #     return self.feat_map[feats]
-        # except:
-        #     return 0
         # return self.feat_map[feats]
         
 
