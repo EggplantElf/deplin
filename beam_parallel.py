@@ -45,21 +45,28 @@ def train_parallel(train_file, model_file, batch_size, domain_size):
         print '# of features:', len(model)
         print '# of non-zero features:', len(filter(lambda x: x != 0, model.values()))
 
-
+    
 def train_batch(model, batch, domain_size):
-    print 10
+    delta = defaultdict(int)
     for sent in batch:
         for hd in sent:
-            train_domain(model, hd.domain, domain_size)
-    
+            train_domain(model, delta, hd.domain, domain_size)
+    for k in delta:
+        model.feat_map[k] += delta[k]
+
+def update(delta, gold, pred):
+    for i in gold.get_full_feats():
+        delta[i] += 1
+    for i in pred.get_full_feats():
+        delta[i] -= 1
 
 
-def train_domain(model, domain, size):
+def train_domain(model, delta, domain, size):
     gold = domain.gold_sequence()
     gold_sub, pred_sub = find_early_violation(model, domain, gold, size)
     # gold_sub, pred_sub = find_max_violation(model, domain, gold, size)
     if gold_sub != pred_sub:
-        update(model, gold_sub, pred_sub)
+        update(delta, gold_sub, pred_sub)
 
 
 def find_early_violation(model, domain, gold, size):

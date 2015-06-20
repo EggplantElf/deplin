@@ -1,18 +1,19 @@
 from __future__ import division
 from sentence import *
 from new_model import *
-import cProfile
-from multiprocessing import Process, Manager, Pool
+from itertools import *
+from collections import defaultdict
+from time import time
+from bisect import *
 
 # TODO
-# even multi-thread/processing
 # implement the evaluate metrics, BLEU, NIST, Edit, Exact
 
 
 #################################
 # training
 
-def train(train_file, model_file, domain_size, sent_size):
+def train(train_file, model_file, domain_beam_size, sent_beam_size):
     model = Model()
     sents = [sent for sent in read_sentence(train_file)]
     # sents = list(read_sentence(train_file))
@@ -20,73 +21,141 @@ def train(train_file, model_file, domain_size, sent_size):
     print '# of sentences', len(sents)
     for it in xrange(10):
         oracle_score = 0
+        global_oracle_score = 0
         for (i, sent) in enumerate(sents):
             if i % 100 == 0:
                 print i
-            for hd in sent:
-                # pred = domain_search(model, hd.domain, domain_size)[0]
-                # oracle_score += pred.get_oracle_score()
+            candidates = {}
+            for h in sent:
                 # training the domain linearizer
-                train_domain(model, hd.domain, domain_size)
+                sqs = train_domain(model, h.domain, domain_beam_size)
+                oracle_score += sqs[0].get_oracle_score()
+                candidates[h] = sqs
+            sent_candidates = train_sent(model, sent, candidates, sent_beam_size)
+            global_oracle_score += sent_candidates[0].get_oracle_score()
+
         print 'oracle score:', oracle_score
+        print 'global score:', global_oracle_score
         print '# of features:', len(model.feat_map)
         print '# of non-zero features:', len(filter(lambda x: x != 0, model.feat_map.values()))
     print 'sequences:', Sequence.count
 
     # model.save(model_file)
 
+
+#################################
+# train domain
+
 def train_domain(model, domain, size):
     gold = domain.gold_sequence()
-    gold_sub, pred_sub = find_early_violation(model, domain, gold, size)
-    # gold_sub, pred_sub = find_max_violation(model, domain, gold, size)
-    if gold_sub != pred_sub:
-        model.update(gold_sub, pred_sub)
+    (gold_part, pred_part), agenda = find_violation(model, domain, gold, size, True)
+    if gold_part != pred_part:
+        model.update_local(gold_part, pred_part)
+    return agenda
 
 
-def find_early_violation(model, domain, gold, size): # 80 sec
-    gold_sub = Sequence()
-    agenda = [gold_sub]
-    for i in xrange(len(domain)):
-        beam = []
-        for sq in agenda:
-            for tk in domain - set(sq):
-                nsq = sq.append(model, tk) # 44 sec
-                beam.append(nsq)
-        beam.sort(key = lambda x: x.score, reverse = True)
-        agenda = beam[:size]
-        gold_sub = gold_sub.append(model, gold[i])
-        if gold_sub not in agenda:
-            return gold_sub, agenda[0]
-    return gold_sub, agenda[0]
+def appendable(domain, sq):
+    s = domain.copy()
+    for tk in sq:
+        s.remove(tk)
+    return s
 
-
-def find_max_violation(model, domain, gold, size):
+ 
+def find_violation(model, domain, gold, size, find_max):
     violations = []
-    gold_sub = Sequence()
-    agenda = [gold_sub]
+    gold_part = Sequence()
+    agenda = [gold_part]
     for i in xrange(len(domain)):
         beam = []
         for sq in agenda:
-            for tk in domain:
-                if tk not in sq:
-                    nsq = sq.append(model, tk)
-                    beam.append(nsq)
-        beam.sort(key = lambda x: x.score, reverse = True)
+            for tk in appendable(domain, sq):
+                nsq = sq.append(model, tk)
+                insort_left(beam, nsq)
         agenda = beam[:size]
-        gold_sub = gold_sub.append(model, gold[i])
-        if gold_sub not in agenda:
-            violations.append((gold_sub, agenda[0]))
-            agenda.append(gold_sub)
+        gold_part = gold_part.append(model, gold[i])
+        if gold_part.score < agenda[-1].score:
+            violations.append((gold_part, agenda[0]))
+    agenda[-1] = gold_part
     if violations:
-        return max(violations, key = lambda (g, p): p.score - g.score)
+        if find_max:
+            return max(violations, key = lambda (g, p): (p.score - g.score, len(p))), agenda
+        else:
+            return violations[0], agenda
     else:
-        return gold_sub, agenda[0]
+        return (gold_part, agenda[0]), agenda
+
+
+#################################
+# train sentence
+
+# assume sent is the correct order for now,
+def train_sent(model, sent, candidates, size):
+    (gold_part, pred_part), agenda = find_violation_for_sent(model, candidates, sent, size, True)
+    if gold_part != pred_part:
+        model.update_global(gold_part, pred_part)
+    return agenda
+
+def traverse(h):
+    # return [h] + sum([traverse(d) for d in h.deps], [])
+    yield h
+    for d in h.deps:
+        for dd in traverse(d):
+            yield dd
+
+def gold_extension(model, candidates, gold_part, h):
+    for dsq in candidates[h]:
+        if dsq.is_gold():
+            gold_dsq = dsq
+            break
+    if not gold_part:
+        hsq_prefix, hsq_suffix = (), ()
+    else:
+        i  = gold_part.index(h)
+        hsq_prefix, hsq_suffix = gold_part[:i], gold_part[i + 1:]
+    nsq = Sequence(hsq_prefix + dsq + hsq_suffix)
+    nsq.global_score = gold_part.score + dsq.score + nsq.get_global_score(model)
+    return nsq
+
+def get_extensions(model, candidates, agenda, h):
+    for hsq in agenda:
+        if not hsq:
+            hsq_prefix, hsq_suffix = (), ()
+        else:
+            i = hsq.index(h)
+            hsq_prefix, hsq_suffix = hsq[:i], hsq[i + 1:]
+        for dsq in candidates[h]:
+            nsq = Sequence(hsq_prefix + dsq + hsq_suffix)
+            nsq.global_score = hsq.score + dsq.score + nsq.get_global_score(model)
+            yield nsq
+
+# merge with find domain violation later
+# use *args to generalize
+def find_violation_for_sent(model, candidates, sent, size, find_max):
+    violations = []
+    gold_part = Sequence()
+    agenda = [gold_part]
+    for h in traverse(sent.root):
+        beam = []
+        for nsq in get_extensions(model, candidates, agenda, h):
+            insort_left(beam, nsq)
+        agenda = beam[:size]
+        gold_part = gold_extension(model, candidates, gold_part, h)
+        if gold_part.score < agenda[-1].score:
+            violations.append((gold_part, agenda[0]))
+    if violations:
+        if find_max:
+            return max(violations, key = lambda (g, p): p.score - g.score), agenda
+        else:
+            return violations[0], agenda
+    else:
+        return (gold_part, agenda[0]), agenda
 
 
 
 #################################
 # test
-def test(filename, model_file, domain_size):
+# all needs change
+def test(filename, model_file, domain_beam_size):
     model = Model(model_file)
     
     oracle_score = 0
@@ -95,12 +164,12 @@ def test(filename, model_file, domain_size):
     stats = {}
 
     for sent in read_sentence(filename):
-        for hd in sent: 
-            sq = domain_search(model, hd.domain, domain_size)[0]
+        for h in sent: 
+            sq = domain_search(model, h.domain, domain_beam_size)[0]
             l = len(sq)
             if l not in stats:
                 stats[l] = [0, 0]
-            if sq == hd.domain.gold_sequence():
+            if sq == h.domain.gold_sequence():
                 correct += 1
                 stats[l][0] += 1
             total += 1
@@ -117,53 +186,33 @@ def test(filename, model_file, domain_size):
     for l in sorted(stats):
         print 'length = %d, accuracy: %d / %d = %.4f' % (l, stats[l][0], stats[l][1], stats[l][0] / stats[l][1])
 
-
-#################################
-# domain search
-
 def domain_search(model, domain, size):
     agenda = [Sequence()]
     for i in range(len(domain)):
         beam = []
         for sq in agenda:
-            for tk in domain:
-                if tk not in sq:
-                    nsq = sq.append(model, tk)
-                    beam.append(nsq)
-        beam.sort(key = lambda x: x.score, reverse = True)
+            for tk in cands(domain, sq):
+                nsq = sq.append(model, tk)
+                insort_left(beam, nsq)
         agenda = beam[:size]
     return agenda
 
-
-
-#################################
-# sent search
-
 def sent_search(model, sent, candis, size):
     beam = [Sequence()]
-    for hd in traverse(sent[0]):
-        beam = [replace(model, hsq, dsq) for dsq in candis[hd] for hsq in beam]
-        beam.sort(key = lambda x: x.score, reverse = True)
+    for h in traverse(sent[0]):
+        beam = [replace(model, hsq, dsq) for dsq in candis[h] for hsq in beam]
+        beam.sort(reverse = True)
         beam = beam[:size]
     return beam[0]
 
-
-def traverse(h):
-    return [h] + sum([traverse(d) for d in h.deps], [])
-
-def replace(model, hsq, dsq):
-    if not hsq:
-        return dsq
-    for i, h in enumerate(hsq):
-        if h in dsq:
-            return Sequence(hsq[:i] + dsq + hsq[i + 1:]).calc(model)
 
 #################################
 
 
 
 if __name__ == '__main__':
-    # train('wsj_train.f1k.conll06', 'test.model',10, 3)
-    # cProfile.run("test('wsj_dev.conll06', 'test.model', 10)")
+    t0 = time()
+    train('wsj_train.f1k.conll06', 'test.model',10, 3)
     # linearize('wsj_dev.conll06', 'test.model', 10, 1)
-    cProfile.run("train('wsj_train.f1k.conll06', 'test.model',10, 3)")
+    print 'time used:', time() - t0
+

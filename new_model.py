@@ -31,12 +31,17 @@ class Model:
         # return self.feat_map[feats]
         
 
-    def update(self, gold, pred):
-        for i in gold.get_full_feats():
+    def update_local(self, gold, pred):
+        for i in gold.get_local_feats():
             self.feat_map[i] += 1
-        for i in pred.get_full_feats():
+        for i in pred.get_local_feats():
             self.feat_map[i] -= 1
 
+    def update_global(self, gold, pred):
+        for i in gold.get_global_feats():
+            self.feat_map[i] += 1
+        for i in pred.get_global_feats():
+            self.feat_map[i] -= 1
 
 
 

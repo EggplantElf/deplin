@@ -3,3 +3,4 @@
 *.conll
 *.txt
 *.model
+*.lprof

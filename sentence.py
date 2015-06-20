@@ -19,10 +19,17 @@ class Token:
     def __repr__(self):
         return str(self.tid)
 
+    # def __eq__(self, ):
+    #     return 
+
+    def __lt__(self, other):
+        return self.tid < other.tid
+
     def single(self):
         return len(self.domain) == 1
 
-
+    def lemma_label_pos(self):
+        return self.lemma, self.label, self.pos
 
 class Root(Token):
     __slots__ = ['sent', 'tid', 'pid', 'lemma', 'pos', 'hid', 'label', 'domain', 'deps']
@@ -43,12 +50,13 @@ class Domain(set):
         self.head = head
 
     def gold_sequence(self):
-        return sorted(self, key = lambda x: x.tid)
+        # return sorted(self, key = lambda x: x.tid)
+        return sorted(self)
 
 class Sentence(list):
     def __init__(self):
-        self.append(Root())
-        self.arcs = []
+        self.root = Root()
+        self.append(self.root)
 
     def add_token(self, token):
         self.append(token)
@@ -75,47 +83,34 @@ class Sequence(tuple):
         super(Sequence, self).__init__(self, *args)
         self.prev = None
         self.score = 0
+        self.global_score = 0
         Sequence.count += 1
+        # head of the domain could be useful in some features
 
-    def __repr__(self):
-        return '(%s): %d' % (', '.join(str(i) for i in self), self.score)
+    # def __repr__(self):
+        # return '(%s): %d' % (', '.join(str(i) for i in self), self.global_score)
 
-    def get_local_feats(self):
-        l = len(self)
-        feats = []
-        if l >= 2:
-            feats.append('LB1_LB2:%s_%s' % (self[-2].label, self[-1].label))
-            feats.append('LM1_LM2:%s_%s' % (self[-2].lemma, self[-1].lemma))
-            feats.append('LB1_LM2:%s_%s' % (self[-2].label, self[-1].lemma))
-            feats.append('P1_P2:%s_%s' % (self[-2].pos, self[-1].pos))
-            if l >= 3:
-                feats.append('LM1_LM2_LM3:%s_%s_%s' % (self[-3].lemma, self[-2].lemma, self[-1].lemma))
-                feats.append('P1_P2_P3:%s_%s_%s' % (self[-3].pos, self[-2].pos, self[-1].pos))
-        return feats
+    # be careful here, very dangerous
+    def __lt__(self, other):
+        return self.global_score > other.global_score
 
-    # maybe even not list, but direct update here, try later
-    # doesn't matter much, too few updates anyway
-    def get_full_feats(self):
-        if self.prev:
-            return self.prev.get_full_feats() + self.get_local_feats()
-        else:
-            return []
+    # @profile
+    def append(self, model, tk):
+        sq = Sequence(self + (tk,))
+        sq.prev = self
+        sq.score = sq.get_local_score(model)
+        sq.global_score = sq.score
+        return sq
 
-    def get_local_score(self, model):
-        l = len(self)
-        s = 0
-        if l >= 2:
-            s += model.get_score('LB1_LB2:%s_%s' % (self[-2].label, self[-1].label))
-            s += model.get_score('LM1_LM2:%s_%s' % (self[-2].lemma, self[-1].lemma))
-            s += model.get_score('LB1_LM2:%s_%s' % (self[-2].label, self[-1].lemma))
-            s += model.get_score('P1_P2:%s_%s' % (self[-2].pos, self[-1].pos))
-            if l >= 3:
-                s += model.get_score('LM1_LM2_LM3:%s_%s_%s' % (self[-3].lemma, self[-2].lemma, self[-1].lemma))
-                s += model.get_score('P1_P2_P3:%s_%s_%s' % (self[-3].pos, self[-2].pos, self[-1].pos))
-        return s
+    # could be slow, really slow! try head_index
+    # only sequences generated in the sent search have real global score
+    # def extend(self, model, dsq):
+    #     nsq = Sequence(self[:i] + dsq + self[i + 1:])
+    #     nsq.global_score = self.score + dsq.score + nsq.get_global_score(model)
+    #     return nsq
 
-    def get_full_score(self, model):
-        self.score = self.prev.score + self.get_local_score(model)
+    def is_gold(self):
+        return all(i < j for (i, j) in izip(self, self[1:]))
 
     def get_oracle_score(self):
         score = 0
@@ -124,11 +119,41 @@ class Sequence(tuple):
                 score += (j.tid - i.tid)
         return score
 
-    def append(self, model, tk):
-        sq = Sequence(self + (tk,))
-        sq.prev = self
-        sq.get_full_score(model)
-        return sq
+    def get_local_score(self, model):
+        return self.prev.score + sum(self.local_map(model.get_score))
+
+
+    def get_local_feats(self):
+        if self.prev:
+            return self.prev.get_local_feats() + list(self.local_map(lambda x: x))
+        else:
+            return []
+  
+    def local_map(self, func):
+        if len(self) > 1:
+            lm1, lb1, p1 = self[-1].lemma_label_pos()
+            lm2, lb2, p2 = self[-2].lemma_label_pos()
+            yield func('LB1_LB2:%s_%s' % (lb1, lb2))
+            yield func('LM1_LM2:%s_%s' % (lm1, lm2))
+            yield func('LB1_LM2:%s_%s' % (lb1, lm2))
+            yield func('P1_P2:%s_%s' % (p1, p2))
+            if len(self) > 2:
+                lm3, lb3, p3 = self[-3].lemma_label_pos()
+                yield func('LM1_LM2_LM3:%s_%s_%s' % (lm1, lm2, lm3))
+                yield func('P1_P2_P3:%s_%s_%s' % (p1, p2, p3))
+
+
+    def get_global_score(self, model):
+        return sum(self.global_map(model.get_score))
+
+    def get_global_feats(self):
+        return list(self.global_map(lambda x: x))
+
+
+    def global_map(self, func):
+        if len(self) > 6:
+            yield func('P_F3_L3:%s_%s_%s_%s_%s_%s' % \
+                (self[1].pos, self[2].pos, self[3].pos, self[4].pos, self[5].pos, self[6].pos))
 
 
 def read_sentence(filename):
