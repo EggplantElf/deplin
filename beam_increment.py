@@ -8,7 +8,8 @@ from bisect import *
 
 # TODO
 # implement the evaluate metrics, BLEU, NIST, Edit, Exact
-
+# finish the features!
+# start real evaluatinos!
 
 #################################
 # training
@@ -19,7 +20,7 @@ def train(train_file, model_file, domain_beam_size, sent_beam_size):
     # sents = list(read_sentence(train_file))
 
     print '# of sentences', len(sents)
-    for it in xrange(10):
+    for it in xrange(20):
         oracle_score = 0
         global_oracle_score = 0
         for (i, sent) in enumerate(sents):
@@ -27,13 +28,12 @@ def train(train_file, model_file, domain_beam_size, sent_beam_size):
                 print i
             candidates = {}
             for h in sent:
-                # training the domain linearizer
-                sqs = train_domain(model, h.domain, domain_beam_size)
-                oracle_score += sqs[0].get_oracle_score()
-                candidates[h] = sqs
+                if len(h.domain) >1:
+                    sqs = train_domain(model, h.domain, domain_beam_size)
+                    oracle_score += sqs[0].get_oracle_score()
+                    candidates[h] = sqs
             sent_candidates = train_sent(model, sent, candidates, sent_beam_size)
             global_oracle_score += sent_candidates[0].get_oracle_score()
-
         print 'oracle score:', oracle_score
         print 'global score:', global_oracle_score
         print '# of features:', len(model.feat_map)
@@ -48,8 +48,9 @@ def train(train_file, model_file, domain_beam_size, sent_beam_size):
 
 def train_domain(model, domain, size):
     gold = domain.gold_sequence()
-    (gold_part, pred_part), agenda = find_violation(model, domain, gold, size, True)
+    (gold_part, pred_part), gold_seq, agenda = find_violation(model, domain, gold, size, True)
     if gold_part != pred_part:
+        agenda[-1] = gold_seq
         model.update_local(gold_part, pred_part)
     return agenda
 
@@ -75,14 +76,13 @@ def find_violation(model, domain, gold, size, find_max):
         gold_part = gold_part.append(model, gold[i])
         if gold_part.score < agenda[-1].score:
             violations.append((gold_part, agenda[0]))
-    agenda[-1] = gold_part
     if violations:
         if find_max:
-            return max(violations, key = lambda (g, p): (p.score - g.score, len(p))), agenda
+            return max(violations, key = lambda (g, p): (p.score - g.score, len(p))), gold_part, agenda
         else:
-            return violations[0], agenda
+            return violations[0], gold_part, agenda
     else:
-        return (gold_part, agenda[0]), agenda
+        return (gold_part, agenda[0]), gold_part, agenda
 
 
 #################################
@@ -131,17 +131,22 @@ def get_extensions(model, candidates, agenda, h):
 # merge with find domain violation later
 # use *args to generalize
 def find_violation_for_sent(model, candidates, sent, size, find_max):
+    global count
     violations = []
     gold_part = Sequence()
     agenda = [gold_part]
     for h in traverse(sent.root):
-        beam = []
-        for nsq in get_extensions(model, candidates, agenda, h):
-            insort_left(beam, nsq)
-        agenda = beam[:size]
-        gold_part = gold_extension(model, candidates, gold_part, h)
-        if gold_part.score < agenda[-1].score:
-            violations.append((gold_part, agenda[0]))
+        # print 'traverse', h
+        # print 'gold', gold_part
+        if len(h.domain) > 1:
+            beam = []
+            for nsq in get_extensions(model, candidates, agenda, h):
+                count += 1
+                insort_left(beam, nsq)
+            agenda = beam[:size]
+            gold_part = gold_extension(model, candidates, gold_part, h)
+            if gold_part.score < agenda[-1].score:
+                violations.append((gold_part, agenda[0]))
     if violations:
         if find_max:
             return max(violations, key = lambda (g, p): p.score - g.score), agenda
@@ -213,6 +218,8 @@ def sent_search(model, sent, candis, size):
 if __name__ == '__main__':
     t0 = time()
     train('wsj_train.f1k.conll06', 'test.model',10, 3)
+    # train('test.conll', 'test.model',10, 3)
+
     # linearize('wsj_dev.conll06', 'test.model', 10, 1)
     print 'time used:', time() - t0
 
