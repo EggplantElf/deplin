@@ -20,7 +20,7 @@ def train(train_file, model_file, domain_beam_size, sent_beam_size):
     # sents = list(read_sentence(train_file))
 
     print '# of sentences', len(sents)
-    for it in xrange(20):
+    for it in xrange(10):
         oracle_score = 0
         global_oracle_score = 0
         for (i, sent) in enumerate(sents):
@@ -131,7 +131,6 @@ def get_extensions(model, candidates, agenda, h):
 # merge with find domain violation later
 # use *args to generalize
 def find_violation_for_sent(model, candidates, sent, size, find_max):
-    global count
     violations = []
     gold_part = Sequence()
     agenda = [gold_part]
@@ -141,7 +140,6 @@ def find_violation_for_sent(model, candidates, sent, size, find_max):
         if len(h.domain) > 1:
             beam = []
             for nsq in get_extensions(model, candidates, agenda, h):
-                count += 1
                 insort_left(beam, nsq)
             agenda = beam[:size]
             gold_part = gold_extension(model, candidates, gold_part, h)
@@ -218,8 +216,5 @@ def sent_search(model, sent, candis, size):
 if __name__ == '__main__':
     t0 = time()
     train('wsj_train.f1k.conll06', 'test.model',10, 3)
-    # train('test.conll', 'test.model',10, 3)
-
-    # linearize('wsj_dev.conll06', 'test.model', 10, 1)
     print 'time used:', time() - t0
 
