@@ -84,17 +84,17 @@ class Sequence(tuple):
         super(Sequence, self).__init__(self, *args)
         self.prev = None
         self.score = 0
-        self.global_score = 0
+        # self.global_score = 0
         Sequence.count += 1
         # head of the domain could be useful in some features
 
     # def __repr__(self):
-        # return '(%s): %d' % (', '.join(str(i) for i in self), self.global_score)
+        # return '(%s): %d' % (', '.join(str(i) for i in self), self.score)
         # return '(%s): %d' % ', '.join(str(i) for i in self)
 
     # be careful here, very dangerous
     def __lt__(self, other):
-        return self.global_score > other.global_score
+        return self.score > other.score
 
     def mark_head(self, head):
         self.head = head
@@ -106,15 +106,15 @@ class Sequence(tuple):
         sq.head = self.head
         sq.prev = self
         sq.score = sq.get_local_score(model)
-        sq.global_score = sq.score
         return sq
 
-    # could be slow, really slow! try head_index
-    # only sequences generated in the sent search have real global score
-    # def extend(self, model, dsq):
-    #     nsq = Sequence(self[:i] + dsq + self[i + 1:])
-    #     nsq.global_score = self.score + dsq.score + nsq.get_global_score(model)
-    #     return nsq
+    def copy(self):
+        sq = Sequence(self)
+        sq.head = self.head
+        sq.prev = self.prev
+        sq.score = self.score
+        return sq
+
 
     def is_gold(self):
         return all(i < j for (i, j) in izip(self, self[1:]))
@@ -146,37 +146,37 @@ class Sequence(tuple):
             h = self.head_code(t1, t2)
             d = l - 2
             nc1, nc2 = len(t1.deps), len(t2.deps)
-            yield func('LB1_LB2:%s_%s' % (lb1, lb2))
-            yield func('LM1_LM2:%s_%s' % (lm1, lm2))
-            yield func('LB1_LM1:%s_%s' % (lb1, lm1))
-            yield func('LB1_LM2:%s_%s' % (lb1, lm2))
-            yield func('LB2_LM1:%s_%s' % (lb2, lm1))
-            yield func('LB2_LM2:%s_%s' % (lb2, lm2))
-            yield func('P1_P2:%s_%s' % (p1, p2))
-            yield func('P1_P2_H:%s_%s_%s' % (p1, p2, h))
-            yield func('LB1_LB2_P1_H:%s_%s_%s_%s' % (lb1, lb2, p1, h))
-            yield func('LB1_LB2_P2_H:%s_%s_%s_%s' % (lb1, lb2, p2, h))
-            yield func('LB1_LB2_P1_P2_H:%s_%s_%s_%s_%s' % (lb1, lb2, p1, p2, h))
-            yield func('LB1_LB2_P1_NC2_H:%s_%s_%s_%s_%s' % (lb1, lb2, p1, nc2, h))
-            yield func('LB1_LB2_P2_NC1_H:%s_%s_%s_%s_%s' % (lb1, lb2, p2, nc1, h))
+            yield func('f1~LB1_LB2:%s_%s' % (lb1, lb2))
+            yield func('f2~LM1_LM2:%s_%s' % (lm1, lm2))
+            yield func('f3~LB1_LM1:%s_%s' % (lb1, lm1))
+            yield func('f4~LB1_LM2:%s_%s' % (lb1, lm2))
+            yield func('f5~LB2_LM1:%s_%s' % (lb2, lm1))
+            yield func('f6~LB2_LM2:%s_%s' % (lb2, lm2))
+            yield func('f7~P1_P2:%s_%s' % (p1, p2))
+            yield func('f8~P1_P2_H:%s_%s_%s' % (p1, p2, h))
+            yield func('f9~LB1_LB2_P1_H:%s_%s_%s_%s' % (lb1, lb2, p1, h))
+            yield func('f10~LB1_LB2_P2_H:%s_%s_%s_%s' % (lb1, lb2, p2, h))
+            yield func('f11~LB1_LB2_P1_P2_H:%s_%s_%s_%s_%s' % (lb1, lb2, p1, p2, h))
+            yield func('f12~LB1_LB2_P1_NC2_H:%s_%s_%s_%s_%s' % (lb1, lb2, p1, nc2, h))
+            yield func('f13~LB1_LB2_P2_NC1_H:%s_%s_%s_%s_%s' % (lb1, lb2, p2, nc1, h))
 
             if l > 2:
                 t3 = self[-2]
                 lm3, lb3, p3 = self[-3].lemma_label_pos()
                 h = self.head_code(t1, t2, t3)
                 d = l - 3
-                yield func('LM1_LM2_LM3:%s_%s_%s' % (lm1, lm2, lm3))
-                yield func('LM1_LM2_LM3_D:%s_%s_%s_%s' % (lm1, lm2, lm3, d))
-                yield func('P1_P2_P3:%s_%s_%s' % (p1, p2, p3))
-                yield func('P1_P2_P3_D:%s_%s_%s_%s' % (p1, p2, p3, d))
-                yield func('LM1_LM3_H:%s_%s_%s' % (lm1, lm3, h))
-                yield func('LM1_LM3_H_D:%s_%s_%s_%s' % (lm1, lm3, h, d))
-                yield func('LB1_LB2_LB3_H:%s_%s_%s_%s' % (lb1, lb2, lb3, h))
-                yield func('LB1_LB2_LB3_H_D:%s_%s_%s_%s_%s' % (lb1, lb2, lb3, h, d))
-                yield func('LB1_LB2_LB3_LM1_P2_H:%s_%s_%s_%s_%s_%s' % (lb1, lb2, lb3, lm1, p2, h))
-                yield func('LB1_LB2_LB3_LM1_P2_H_D:%s_%s_%s_%s_%s_%s_%s' % (lb1, lb2, lb3, lm1, p2, h, d))
-                yield func('LB1_LB2_LB3_LM2_P1_H:%s_%s_%s_%s_%s_%s' % (lb1, lb2, lb3, lm2, p1, h))
-                yield func('LB1_LB2_LB3_LM2_P1_H_D:%s_%s_%s_%s_%s_%s_%s' % (lb1, lb2, lb3, lm2, p1, h, d))
+                yield func('f14~LM1_LM2_LM3:%s_%s_%s' % (lm1, lm2, lm3))
+                yield func('f15~LM1_LM2_LM3_D:%s_%s_%s_%s' % (lm1, lm2, lm3, d))
+                yield func('f16~P1_P2_P3:%s_%s_%s' % (p1, p2, p3))
+                yield func('f17~P1_P2_P3_D:%s_%s_%s_%s' % (p1, p2, p3, d))
+                yield func('f18~LM1_LM3_H:%s_%s_%s' % (lm1, lm3, h))
+                yield func('f19~LM1_LM3_H_D:%s_%s_%s_%s' % (lm1, lm3, h, d))
+                yield func('f20~LB1_LB2_LB3_H:%s_%s_%s_%s' % (lb1, lb2, lb3, h))
+                yield func('f21~LB1_LB2_LB3_H_D:%s_%s_%s_%s_%s' % (lb1, lb2, lb3, h, d))
+                yield func('f22~LB1_LB2_LB3_LM1_P2_H:%s_%s_%s_%s_%s_%s' % (lb1, lb2, lb3, lm1, p2, h))
+                yield func('f23~LB1_LB2_LB3_LM1_P2_H_D:%s_%s_%s_%s_%s_%s_%s' % (lb1, lb2, lb3, lm1, p2, h, d))
+                yield func('f24~LB1_LB2_LB3_LM2_P1_H:%s_%s_%s_%s_%s_%s' % (lb1, lb2, lb3, lm2, p1, h))
+                yield func('f25~LB1_LB2_LB3_LM2_P1_H_D:%s_%s_%s_%s_%s_%s_%s' % (lb1, lb2, lb3, lm2, p1, h, d))
 
     def add_extra_score(self, model):
         self.score += sum(self.extra_map(model.get_score))
@@ -191,33 +191,21 @@ class Sequence(tuple):
         posh = self.pos_head()
 
         if l > 1:
-            yield func('LBl1_LBr1_LBr2_Pl1_Pr1_POSh:%s_%s_%s_%s_%s_%s' \
+            yield func('f26~LBl1_LBr1_LBr2_Pl1_Pr1_POSh:%s_%s_%s_%s_%s_%s' \
                 % (self[0].label, self[-1].label, self[-2].label, self[0].pos, self[-1].pos, posh))
         if l > 2:
-            yield func('LBl1_LBl2_LBl3_Pr1_Pr2_POSh_?:%s_%s_%s_%s_%s_%s_%s'\
+            yield func('f27~LBl1_LBl2_LBl3_Pr1_Pr2_POSh_?:%s_%s_%s_%s_%s_%s_%s'\
                 % (self[0].label, self[1].label, self[2].label, self[-1].pos, self[-2].label, posh, que))
-            yield func('LBl1_LBl2_LBl3_Pr1_Pr2_LMh_?:%s_%s_%s_%s_%s_%s_%s'\
+            yield func('f28~LBl1_LBl2_LBl3_Pr1_Pr2_LMh_?:%s_%s_%s_%s_%s_%s_%s'\
                 % (self[0].label, self[1].label, self[2].label, self[-1].pos, self[-2].label, lmh, que))
         if l > 3:
-            yield func('Pl1_Pl2_Pl3_Pl4_Pr1_LBh_POSh_?:%s_%s_%s_%s_%s_%s_%s_%s'\
+            yield func('f29~Pl1_Pl2_Pl3_Pl4_Pr1_LBh_POSh_?:%s_%s_%s_%s_%s_%s_%s_%s'\
                 % (self[0].pos, self[1].pos, self[2].pos, self[3].pos, self[-1].pos, lbh, posh, que))
-            yield func('Pr1_Pr2_Pr3_Pr4_Pl1_LBh_POSh_?:%s_%s_%s_%s_%s_%s_%s_%s'\
+            yield func('f30~Pr1_Pr2_Pr3_Pr4_Pl1_LBh_POSh_?:%s_%s_%s_%s_%s_%s_%s_%s'\
                 % (self[-1].pos, self[-2].pos, self[-3].pos, self[-4].pos, self[0].pos, lbh, posh, que))
-        yield func('Pl1_Pr1_LMl1_LMr1_LMh_POSh_?:%s_%s_%s_%s_%s_%s_%s'\
+        yield func('f31~Pl1_Pr1_LMl1_LMr1_LMh_POSh_?:%s_%s_%s_%s_%s_%s_%s'\
             % (self[0].pos, self[-1].pos, self[0].lemma, self[-1].lemma, lmh, posh, que))
 
-
-    def get_global_score(self, model):
-        return sum(self.global_map(model.get_score))
-
-    def get_global_feats(self):
-        return list(self.global_map(lambda x: x))
-
-
-    def global_map(self, func):
-        if len(self) > 6:
-            yield func('P_F3_L3:%s_%s_%s_%s_%s_%s' % \
-                (self[1].pos, self[2].pos, self[3].pos, self[4].pos, self[5].pos, self[6].pos))
 
     def head_code(self, t1, t2, t3 = None):
         if t1 is self.head:

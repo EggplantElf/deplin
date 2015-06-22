@@ -1,6 +1,5 @@
 from __future__ import division
-from collections import defaultdict
-import itertools as it
+from collections import defaultdict, Counter
 import cPickle
 import gzip
 
@@ -12,7 +11,6 @@ class Model:
             self.load(modelfile)
         else:
             self.feat_map = defaultdict(int)
-            # self.feat_map = {}
 
     def save(self, modelfile):
         stream = gzip.open(modelfile,'wb')
@@ -25,30 +23,28 @@ class Model:
         self.feat_map = cPickle.load(stream)
         stream.close()
 
-    # defaultdict is better than get, weird
     def get_score(self, feats):
         return self.feat_map.get(feats, 0)
-        # return self.feat_map[feats]
-        
 
-    def update_local(self, gold, pred):
-        for i in gold.get_local_feats():
+    def update(self, gf, pf, gs, ps):
+        for i in gf:
             self.feat_map[i] += 1
-        for i in pred.get_local_feats():
+        for i in pf:
             self.feat_map[i] -= 1
 
-    def update_extra(self, gold, pred):
-        for i in gold.get_extra_feats():
-            self.feat_map[i] += 1
-        for i in pred.get_extra_feats():
-            self.feat_map[i] -= 1            
-
-
-    def update_global(self, gold, pred):
-        for i in gold.get_global_feats():
-            self.feat_map[i] += 1
-        for i in pred.get_global_feats():
-            self.feat_map[i] -= 1
+    def update_pa(self, gf, pf, gs, ps):
+        diff = Counter(gf)
+        diff.subtract(Counter(pf))
+        abs_diff = sum(abs(v) for v in diff.values())
+        loss = max(ps - gs, 1)
+        if abs_diff == 0:
+            return
+        t = loss / abs_diff
+        # t = loss / abs_diff
+        for i in gf:
+            self.feat_map[i] += t
+        for i in pf:
+            self.feat_map[i] -= t
 
 
 

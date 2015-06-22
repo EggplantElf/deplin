@@ -1,6 +1,5 @@
 *.pyc
-*.conll06
-*.conll
+*.conll*
 *.txt
 *.model
 *.lprof
