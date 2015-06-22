@@ -1,6 +1,6 @@
 from __future__ import division
-import itertools as it
 from collections import defaultdict
+import itertools as it
 import cPickle
 import gzip
 
@@ -12,6 +12,7 @@ class Model:
             self.load(modelfile)
         else:
             self.feat_map = defaultdict(int)
+            # self.feat_map = {}
 
     def save(self, modelfile):
         stream = gzip.open(modelfile,'wb')
@@ -24,16 +25,30 @@ class Model:
         self.feat_map = cPickle.load(stream)
         stream.close()
 
+    # defaultdict is better than get, weird
+    def get_score(self, feats):
+        return self.feat_map.get(feats, 0)
+        # return self.feat_map[feats]
+        
 
-    def get_score(self, feat):
-        return self.feat_map.get(feat, 0)
-
-    def update(self, gold, pred):
-        for i in gold.get_full_feats():
+    def update_local(self, gold, pred):
+        for i in gold.get_local_feats():
             self.feat_map[i] += 1
-        for i in pred.get_full_feats():
+        for i in pred.get_local_feats():
             self.feat_map[i] -= 1
 
+    def update_extra(self, gold, pred):
+        for i in gold.get_extra_feats():
+            self.feat_map[i] += 1
+        for i in pred.get_extra_feats():
+            self.feat_map[i] -= 1            
+
+
+    def update_global(self, gold, pred):
+        for i in gold.get_global_feats():
+            self.feat_map[i] += 1
+        for i in pred.get_global_feats():
+            self.feat_map[i] -= 1
 
 
 
