@@ -8,7 +8,7 @@ from bisect import insort_left
 
 # TODO
 # implement the evaluate metrics, BLEU, NIST, Edit, Exact
-# mira update!
+# mira update! not working
 # give output to evaluate, it should be plain text, 
 # exchange of same words in the same domain should be tolerented!!!
 # start real evaluations!
@@ -64,7 +64,7 @@ def train_domain(model, domain, size, it):
             gf += gold_part.get_extra_feats()
             pf += pred_part.get_extra_feats()
         model.update(gf, pf, gold_part.score, pred_part.score)
-        
+
         # if it < 3:
         #     model.update(gf, pf, gold_part.score, pred_part.score)
         # else:
@@ -178,7 +178,7 @@ def find_violation(model, domain, gold, size, find_max):
 #################################
 # test
 # all needs change
-def test(filename, model, domain_beam_size, sent_beam_size):
+def test(input_file, output_file, model, domain_beam_size, sent_beam_size):
     oracle_score = 0
     # global_score = 0
     correct = 0
@@ -188,9 +188,9 @@ def test(filename, model, domain_beam_size, sent_beam_size):
     stats = {}
     bleu_acc = 0
 
-    o = open('result.txt', 'w')
+    o = open(output_file, 'w')
 
-    for sent in read_sentence(filename):
+    for sent in read_sentence(input_file):
         candidates = {}
         for h in sent: 
             candidates[h] = domain_search(model, h.domain, domain_beam_size)
@@ -211,8 +211,10 @@ def test(filename, model, domain_beam_size, sent_beam_size):
             correct += 1
         bleu_acc += bleu(sent_sq)
         total += 1
-        o.write('g: %s\n' % ', '.join(str(t) for t in sorted(sent_sq)))
-        o.write('p: %s\n' % ', '.join(str(t) for t in sent_sq))
+        for tk in sent_sq:
+            if tk.lemma != 'ROOT':
+                o.write('%s\n' % tk.lemma)
+        o.write('\n')
     o.close()
 
     print 'oracle score:', oracle_score
@@ -300,6 +302,6 @@ if __name__ == '__main__':
     t0 = time()
     model = train('wsj_train.f1k.conll06', 'test.model',10, 1)
     # model = Model('test.model')
-    test('wsj_dev.conll06', model, 10, 1)
+    test('wsj_dev.conll06', 'wsj_dev.col', model, 10, 1)
     print 'time used:', time() - t0
 
