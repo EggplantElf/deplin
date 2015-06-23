@@ -1,6 +1,6 @@
 from __future__ import division
 from itertools import izip
-
+import sys
 
 def dist(sq):
     pass
@@ -77,4 +77,4 @@ def evaluate(gold_file, pred_file):
 if __name__ == '__main__':
     # evaluate('wsj_dev.conll06', 'wsj_dev.col')
     # evaluate('../linearizer/test.conll09', '../linearizer/predict.conll09')
-    evaluate('../linearizer/test.conll09', '../linearizer/output.conll09')
+    evaluate(sys.argv[1], sys.argv[2])
