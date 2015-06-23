@@ -191,18 +191,18 @@ class Sequence(tuple):
         posh = self.pos_head()
 
         if l > 1:
-            yield func('f26~LBl1_LBr1_LBr2_Pl1_Pr1_POSh:%s_%s_%s_%s_%s_%s' \
-                % (self[0].label, self[-1].label, self[-2].label, self[0].pos, self[-1].pos, posh))
+            yield func('f26~LBl1_LBr1_LBr2_Pl1_Pr1_POSh_L>3:%s_%s_%s_%s_%s_%s_%s' \
+                % (self[0].label, self[-1].label, self[-2].label, self[0].pos, self[-1].pos, posh, l > 3))
         if l > 2:
-            yield func('f27~LBl1_LBl2_LBl3_Pr1_Pr2_POSh_?:%s_%s_%s_%s_%s_%s_%s'\
-                % (self[0].label, self[1].label, self[2].label, self[-1].pos, self[-2].label, posh, que))
-            yield func('f28~LBl1_LBl2_LBl3_Pr1_Pr2_LMh_?:%s_%s_%s_%s_%s_%s_%s'\
-                % (self[0].label, self[1].label, self[2].label, self[-1].pos, self[-2].label, lmh, que))
+            yield func('f27~LBl1_LBl2_LBl3_Pr1_Pr2_POSh_?_L>4:%s_%s_%s_%s_%s_%s_%s_%s'\
+                % (self[0].label, self[1].label, self[2].label, self[-1].pos, self[-2].label, posh, que, l > 4))
+            yield func('f28~LBl1_LBl2_LBl3_Pr1_Pr2_LMh_?_L>4:%s_%s_%s_%s_%s_%s_%s_%s'\
+                % (self[0].label, self[1].label, self[2].label, self[-1].pos, self[-2].label, lmh, que, l > 4))
         if l > 3:
-            yield func('f29~Pl1_Pl2_Pl3_Pl4_Pr1_LBh_POSh_?:%s_%s_%s_%s_%s_%s_%s_%s'\
-                % (self[0].pos, self[1].pos, self[2].pos, self[3].pos, self[-1].pos, lbh, posh, que))
-            yield func('f30~Pr1_Pr2_Pr3_Pr4_Pl1_LBh_POSh_?:%s_%s_%s_%s_%s_%s_%s_%s'\
-                % (self[-1].pos, self[-2].pos, self[-3].pos, self[-4].pos, self[0].pos, lbh, posh, que))
+            yield func('f29~Pl1_Pl2_Pl3_Pl4_Pr1_LBh_POSh_?_L>6:%s_%s_%s_%s_%s_%s_%s_%s_%s'\
+                % (self[0].pos, self[1].pos, self[2].pos, self[3].pos, self[-1].pos, lbh, posh, que, l > 6))
+            yield func('f30~Pr1_Pr2_Pr3_Pr4_Pl1_LBh_POSh_?_L>6:%s_%s_%s_%s_%s_%s_%s_%s_%s'\
+                % (self[-1].pos, self[-2].pos, self[-3].pos, self[-4].pos, self[0].pos, lbh, posh, que, l > 6))
         yield func('f31~Pl1_Pr1_LMl1_LMr1_LMh_POSh_?:%s_%s_%s_%s_%s_%s_%s'\
             % (self[0].pos, self[-1].pos, self[0].lemma, self[-1].lemma, lmh, posh, que))
 

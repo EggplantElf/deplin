@@ -14,7 +14,7 @@ from bisect import insort_left
 # start real evaluations!
 # use bisect for small beam, sort for large beam
 
-FEAT = True
+FEAT = False
 ITER = 10
 
 #################################
