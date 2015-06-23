@@ -14,6 +14,8 @@ from bisect import insort_left
 # start real evaluations!
 # use bisect for small beam, sort for large beam
 
+FEAT = True
+ITER = 10
 
 #################################
 # training
@@ -24,7 +26,7 @@ def train(train_file, model_file, domain_beam_size, sent_beam_size):
     # sents = list(read_sentence(train_file))
 
     print '# of sentences', len(sents)
-    for it in xrange(10):
+    for it in xrange(ITER):
         oracle_score = 0
         # global_oracle_score = 0
         for (it, sent) in enumerate(sents):
@@ -36,6 +38,7 @@ def train(train_file, model_file, domain_beam_size, sent_beam_size):
                     sqs = train_domain(model, h.domain, domain_beam_size, it)
                     oracle_score += sqs[0].get_oracle_score()
                     candidates[h] = sqs
+                    model.qadd()
             # sent_candidates = train_sent(model, sent, candidates, sent_beam_size)
             # global_oracle_score += sent_candidates[0].get_oracle_score()
         print 'oracle score:', oracle_score
@@ -44,11 +47,13 @@ def train(train_file, model_file, domain_beam_size, sent_beam_size):
         print '# of non-zero features:', len(filter(lambda x: x != 0, model.feat_map.values()))
     print 'sequences:', Sequence.count
 
-    f = open('features.txt', 'w')
-    for k in sorted(model.feat_map):
-        f.write('%s%s%d\n' % (k, ' ' * (80 - len(k)),model.feat_map[k]))
-    f.close()
+    if FEAT:
+        f = open('features.txt', 'w')
+        for k in sorted(model.feat_map):
+            f.write('%s%s%d\n' % (k, ' ' * (80 - len(k)),model.feat_map[k]))
+        f.close()
 
+    model.average()
     model.save(model_file)
     return model
 
@@ -63,7 +68,7 @@ def train_domain(model, domain, size, it):
         if gold_part is gold_seq:
             gf += gold_part.get_extra_feats()
             pf += pred_part.get_extra_feats()
-        model.update(gf, pf, gold_part.score, pred_part.score)
+        model.update(gf, pf)
 
         # if it < 3:
         #     model.update(gf, pf, gold_part.score, pred_part.score)

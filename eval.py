@@ -19,6 +19,7 @@ def bleu(gold, pred):
                 * precision(ngram(gold, 3), ngram(pred, 3))\
                 * precision(ngram(gold, 4), ngram(pred, 4))) ** 0.25 
 
+# not perfect, replace = 1 instead of 2
 def edit(s1,s2):
     if len(s1) > len(s2):
         s1,s2 = s2,s1
@@ -35,6 +36,9 @@ def edit(s1,s2):
         distances = newDistances
     return distances[-1] / 2
  
+def exact(gold, pred):
+    return all(g == p for (g, p) in izip(gold, pred))
+
 
 def read_lemmas(file_name, i):
     sent = []
@@ -51,6 +55,7 @@ def evaluate(gold_file, pred_file):
     bleu_acc = 0
     edit_acc = 0
     edit_all = 0
+    exact_acc = 0
     total = 0
     for (gold, pred) in izip(read_lemmas(gold_file, 2), read_lemmas(pred_file, 0)):
         # print ' '.join(gold)
@@ -59,9 +64,12 @@ def evaluate(gold_file, pred_file):
         edit_acc += edit(gold, pred)
         total += 1
         edit_all += len(gold)
+        if exact(gold, pred):
+            exact_acc += 1
 
     print 'bleu: %.4f' % (bleu_acc / total)
     print 'edit: %.4f' % (edit_acc / edit_all)
+    print 'exact: %.4f' % (exact_acc / total)
 
 
 

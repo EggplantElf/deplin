@@ -11,6 +11,8 @@ class Model:
             self.load(modelfile)
         else:
             self.feat_map = defaultdict(int)
+            self.delta = defaultdict(int)
+            self.q = 0
 
     def save(self, modelfile):
         stream = gzip.open(modelfile,'wb')
@@ -26,11 +28,20 @@ class Model:
     def get_score(self, feats):
         return self.feat_map.get(feats, 0)
 
-    def update(self, gf, pf, gs, ps):
+    def update(self, gf, pf):
         for i in gf:
             self.feat_map[i] += 1
+            self.delta[i] += self.q
         for i in pf:
             self.feat_map[i] -= 1
+            self.delta[i] -= self.q
+
+    def qadd(self):
+        self.q += 1
+
+    def average(self):
+        for f in self.feat_map:
+            self.feat_map[f] -= self.delta[f] / self.q
 
     def update_pa(self, gf, pf, gs, ps):
         diff = Counter(gf)

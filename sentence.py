@@ -223,6 +223,7 @@ class Sequence(tuple):
     def pos_head(self):
         return self.index(self.head)
 
+
 def read_sentence(filename):
     print 'reading sentences ...'
     sentence = Sentence()
