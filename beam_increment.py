@@ -5,6 +5,7 @@ from itertools import *
 from collections import defaultdict
 from time import time
 from bisect import insort_left
+import sys
 
 # TODO
 # implement the evaluate metrics, BLEU, NIST, Edit, Exact
@@ -304,12 +305,18 @@ def bleu(sq):
 
 
 if __name__ == '__main__':
-    t0 = time()
-    # model = train('wsj_train.f1k.conll06', 'test.model',10, 1)
-    # model = train('../linearizer/train.conll09', 'test.model',10, 1)
-
-    model = Model('test.model')
-    # test('wsj_dev.conll06', 'wsj_dev.col', model, 10, 1)
-    test('../linearizer/test.conll09', '../linearizer/predict.conll09', model, 10, 1)
-    print 'time used:', time() - t0
+    if sys.argv[1] == '-train':
+        train_file = sys.argv[2]
+        model_file = sys.argv[3]
+        t0 = time()
+        model = train(train_file, model_file, 10, 1)
+        print 'time used:', time() - t0
+    elif sys.argv[1] == '-test':
+        test_file = sys.argv[2]
+        model_file = sys.argv[3]
+        output_file = sys.argv[4]
+        model = Model(model_file)
+        t0 = time()
+        test(test_file, output_file, model, 10, 1)
+        print 'time used:', time() - t0
 
