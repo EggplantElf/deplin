@@ -4,19 +4,36 @@ from itertools import izip
 class Token:
     __slots__ = ['sent', 'tid', 'pid', 'lemma', 'pos', 'hid', 'label', 'domain', 'deps']
 
+    # # for conll06
+    # def __init__(self, line):
+    #     entries = line.split()
+    #     self.tid = int(entries[0]) # gold data, don't touch!
+    #     self.pid = -1
+    #     self.lemma = entries[2]
+    #     self.pos = entries[3]
+    #     self.hid = int(entries[6])
+    #     self.label = entries[7]
+    #     self.domain = Domain(self)
+    #     self.deps = []
+
+    # for conll09
     def __init__(self, line):
         entries = line.split()
-        self.tid = int(entries[0]) # gold data, don't touch!
+        self.tid = int(entries[0].split('_')[1]) # gold data, don't touch!
         self.pid = -1
         self.lemma = entries[2]
-        self.pos = entries[3]
-        self.hid = int(entries[6])
-        self.label = entries[7]
+        self.pos = entries[4]
+        self.hid = int(entries[8])
+        self.label = entries[10]
         self.domain = Domain(self)
         self.deps = []
+        # for output
+        self.line = line
 
     def __repr__(self):
         return str(self.tid)
+
+
 
     # def __eq__(self, ):
     #     return 

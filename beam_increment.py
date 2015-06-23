@@ -201,7 +201,7 @@ def test(input_file, output_file, model, domain_beam_size, sent_beam_size):
             candidates[h] = domain_search(model, h.domain, domain_beam_size)
             sq = candidates[h][0]
             l = len(sq)
-            if l > 1:
+            if l > 0:
                 if l not in stats:
                     stats[l] = [0, 0]
                 if sq.is_gold():
@@ -218,7 +218,7 @@ def test(input_file, output_file, model, domain_beam_size, sent_beam_size):
         total += 1
         for tk in sent_sq:
             if tk.lemma != 'ROOT':
-                o.write('%s\n' % tk.lemma)
+                o.write('%s\n' % tk.line)
         o.write('\n')
     o.close()
 
@@ -305,8 +305,11 @@ def bleu(sq):
 
 if __name__ == '__main__':
     t0 = time()
-    model = train('wsj_train.f1k.conll06', 'test.model',10, 1)
-    # model = Model('test.model')
-    test('wsj_dev.conll06', 'wsj_dev.col', model, 10, 1)
+    # model = train('wsj_train.f1k.conll06', 'test.model',10, 1)
+    # model = train('../linearizer/train.conll09', 'test.model',10, 1)
+
+    model = Model('test.model')
+    # test('wsj_dev.conll06', 'wsj_dev.col', model, 10, 1)
+    test('../linearizer/test.conll09', '../linearizer/predict.conll09', model, 10, 1)
     print 'time used:', time() - t0
 

@@ -57,7 +57,7 @@ def evaluate(gold_file, pred_file):
     edit_all = 0
     exact_acc = 0
     total = 0
-    for (gold, pred) in izip(read_lemmas(gold_file, 2), read_lemmas(pred_file, 0)):
+    for (gold, pred) in izip(read_lemmas(gold_file, 2), read_lemmas(pred_file, 2)):
         # print ' '.join(gold)
         # print ' '.join(pred)
         bleu_acc += bleu(gold, pred)
@@ -68,11 +68,13 @@ def evaluate(gold_file, pred_file):
             exact_acc += 1
 
     print 'bleu: %.4f' % (bleu_acc / total)
-    print 'edit: %.4f' % (edit_acc / edit_all)
+    print 'edit: %d' % edit_acc
     print 'exact: %.4f' % (exact_acc / total)
 
 
 
 
 if __name__ == '__main__':
-    evaluate('wsj_dev.conll06', 'wsj_dev.col')
+    # evaluate('wsj_dev.conll06', 'wsj_dev.col')
+    # evaluate('../linearizer/test.conll09', '../linearizer/predict.conll09')
+    evaluate('../linearizer/test.conll09', '../linearizer/output.conll09')
