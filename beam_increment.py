@@ -8,11 +8,7 @@ from bisect import insort_left
 import sys
 
 # TODO
-# implement the evaluate metrics, BLEU, NIST, Edit, Exact
-# mira update! not working
-# give output to evaluate, it should be plain text, 
-# exchange of same words in the same domain should be tolerented!!!
-# start real evaluations!
+# PA undate
 # use bisect for small beam, sort for large beam
 
 FEAT = False
@@ -66,9 +62,9 @@ def train_domain(model, domain, size, it):
     (gold_part, pred_part), gold_seq, agenda = find_violation(model, domain, gold, size, True)
     if gold_part != pred_part:
         gf, pf = gold_part.get_local_feats(), pred_part.get_local_feats()
-        if gold_part is gold_seq:
-            gf += gold_part.get_extra_feats()
-            pf += pred_part.get_extra_feats()
+        # if gold_part is gold_seq:
+        #     gf += gold_part.get_extra_feats()
+        #     pf += pred_part.get_extra_feats()
         model.update(gf, pf)
 
         # if it < 3:
@@ -100,13 +96,13 @@ def find_violation(model, domain, gold, size, find_max):
             for tk in appendable(domain, sq):
                 nsq = sq.append(model, tk)
                 # in the last sequence, add additional features
-                if i == l - 1:
-                    nsq.add_extra_score(model)
+                # if i == l - 1:
+                    # nsq.add_extra_score(model)
                 insort_left(beam, nsq)
         agenda = beam[:size]
         gold_part = gold_part.append(model, gold[i])
-        if i == l - 1:
-            gold_part.add_extra_score(model)
+        # if i == l - 1:
+            # gold_part.add_extra_score(model)
         if gold_part.score < agenda[-1].score:
             violations.append((gold_part, agenda[0]))
 
@@ -295,7 +291,7 @@ def precision(g, p):
         return sum(1 for x in p if x in g) / len(p)
     else:
         return 1
-# use set!
+
 def bleu(sq):
     gold = sorted(sq)
     pred = list(sq)
