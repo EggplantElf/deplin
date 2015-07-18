@@ -25,6 +25,12 @@ class Model:
         self.feat_map = cPickle.load(stream)
         stream.close()
 
+    def show(self, output_file):
+        o = open(output_file)
+        for k, v in sorted(self.feat_map.items()):
+            o.write('%s_%d\n' % (k, v.s))
+        o.close()
+
     def get_score(self, feats):
         return self.feat_map.get(feats, 0)
 
