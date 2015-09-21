@@ -244,6 +244,7 @@ def domain_search(model, domain, size):
     return agenda
 
 
+
 def sent_search(model, sent, candidates, size):
     agenda = [Sequence()]
     for h in traverse(sent.root):
@@ -304,15 +305,23 @@ if __name__ == '__main__':
     if sys.argv[1] == '-train':
         train_file = sys.argv[2]
         model_file = sys.argv[3]
+        if len(sys.argv) == 5:
+            size = int(sys.argv[4])
+        else:
+            size = 10
         t0 = time()
-        model = train(train_file, model_file, 10, 1)
+        model = train(train_file, model_file, size, 1)
         print 'time used:', time() - t0
     elif sys.argv[1] == '-test':
         test_file = sys.argv[2]
         model_file = sys.argv[3]
         output_file = sys.argv[4]
+        if len(sys.argv) == 6:
+            size = int(sys.argv[5])
+        else:
+            size = 10
         model = Model(model_file)
         t0 = time()
-        test(test_file, output_file, model, 10, 1)
+        test(test_file, output_file, model, size, 1)
         print 'time used:', time() - t0
 
